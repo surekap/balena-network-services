@@ -3,7 +3,11 @@ version: '2.1'
 volumes:
   pihole_config:
   dnsmasq_config:
-
+  unifi-data:
+  unms-data:
+  nginx-data:
+  letsencrypt:
+  
 services:
   pihole:
     build: ./pihole
@@ -23,3 +27,32 @@ services:
     ports:
       - '1053:53/tcp'
       - '1053:53/udp'
+  ddclient:
+    build: ./ddclient-cloudflare
+    privileged: true
+  nginx:
+    build: ./nginx
+    privileged: true
+    ports:
+        - "443:443"
+    volumes:
+        - "nginx-data:/app/data"
+        - "letsencrypt:/etc/letsencrypt"
+    links:
+        - "unifi"
+        - "unms"
+  unifi:
+    image: jacobalberty/unifi:5.8.24
+    ports:
+        # See https://help.ubnt.com/hc/en-us/articles/218506997-UniFi-Ports-Used
+        - "10001:10001/udp" # AP discovery 
+        - "3478:3478/udp" # STUN
+        - "6789:6789" # Mobile speed tests
+        - "8080:8080" # Device controller communication
+    volumes:
+        - "unifi-data:/unifi"
+  unms:
+    image: oznu/unms:armhf
+    volumes:
+        - "unms-data:/config"
+  
