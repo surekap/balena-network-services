@@ -3,21 +3,10 @@ version: '2.1'
 volumes:
   pihole_config:
   dnsmasq_config:
+  unifi-data:
   unms-data:
   nginx-data:
   letsencrypt:
-  config:
-    driver: local
-  log:
-    driver: local
-  log2:
-    driver: local
-  run:
-    driver: local
-  run2:
-    driver: local
-  work:
-    driver: local
 
 services:
   pihole:
@@ -53,7 +42,7 @@ services:
         - "unms"
         - "pihole"
   unifi:
-    image: ryansch/unifi-rpi:latest
+    image: jacobalberty/unifi:latest
     ports:
         # See https://help.ubnt.com/hc/en-us/articles/218506997-UniFi-Ports-Used
         - "10001:10001/udp" # AP discovery 
@@ -61,13 +50,7 @@ services:
         - "6789:6789" # Mobile speed tests
         - "8080:8080" # Device controller communication
     volumes:
-        # Unifi v5.0.7 creates all of these directories (some remain empty)
-        - config:/var/lib/unifi
-        - log:/usr/lib/unifi/logs
-        - log2:/var/log/unifi
-        - run:/usr/lib/unifi/run
-        - run2:/run/unifi
-        - work:/usr/lib/unifi/work
+        - "unifi-data:/unifi"
   unms:
     image: oznu/unms:armhf
     volumes:
