@@ -31,7 +31,6 @@ services:
     dns:
       - '127.0.0.1'
       - '1.1.1.1'
-    network_mode: host
 
   unbound:
     build: ./unbound
@@ -52,10 +51,9 @@ services:
     links:
         - "unifi"
         - "unms"
+        - "pihole"
   unifi:
     image: ryansch/unifi-rpi:latest
-    restart: always
-    network_mode: host
     ports:
         # See https://help.ubnt.com/hc/en-us/articles/218506997-UniFi-Ports-Used
         - "10001:10001/udp" # AP discovery 
