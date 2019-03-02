@@ -42,7 +42,9 @@ services:
         - "unms"
         - "pihole"
   unifi:
-    image: jacobalberty/unifi:latest
+    image: ryansch/unifi-rpi:5.10.19-arm32v7
+    restart: always
+    container_name: unifi
     ports:
         # See https://help.ubnt.com/hc/en-us/articles/218506997-UniFi-Ports-Used
         - "10001:10001/udp" # AP discovery 
