@@ -8,7 +8,7 @@ SELFCERT_COUNTRY=${CERT_COUNTRY:-UK}
 LETSENCRYPT_PATH=/etc/letsencrypt/live
 CLOUDFLARE_CREDS=/etc/cloudflare/creds.ini
 NGINX_SPEC=/app/nginx-spec.conf
-SERVICES=(unifi:8443 unms:443)
+SERVICES=(unifi:8443 unms:443 pihole:80)
 CERTBOT="certbot"
 
 function log { echo "[$1] $2"; }
