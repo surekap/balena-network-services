@@ -42,7 +42,7 @@ services:
         - "unms"
         - "pihole"
   unifi:
-    image: jacobalberty/unifi:5.10.19
+    image: jacobalberty/unifi:latest
     restart: always
     container_name: unifi
     volumes:
