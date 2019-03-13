@@ -3,11 +3,22 @@ version: '2.1'
 volumes:
   pihole_config:
   dnsmasq_config:
-  unifi-data:
   unms-data:
   nginx-data:
   letsencrypt:
-
+  unifi-config:
+    driver: local
+  unifi-log:
+    driver: local
+  unifi-log2:
+    driver: local
+  unifi-run:
+    driver: local
+  unifi-run2:
+    driver: local
+  unifi-work:
+    driver: local
+  
 services:
   pihole:
     build: ./pihole
@@ -20,7 +31,10 @@ services:
     dns:
       - '127.0.0.1'
       - '1.1.1.1'
-
+    restart: unless-stopped
+        network_mode: host
+        ports:
+          - "80:80"
   unbound:
     build: ./unbound
     ports:
@@ -40,13 +54,25 @@ services:
     links:
         - "unifi"
         - "unms"
-        - "pihole"
   unifi:
-    image: jacobalberty/unifi:latest
-    restart: always
+    image: ryansch/unifi-rpi:5.10.19-arm32v7
+    ports:
+        - "3478:3478/udp"
+        - "6789:6789"
+        - "8080-8081:8080-8081"
+        - "8443:8443"
+        - "8843:8843"
+        - "8880:8880"
+        - "10001:10001/udp"
     container_name: unifi
     volumes:
-        - "unifi-data:/unifi"
+        - unifi-config:/var/lib/unifi
+        - unifi-log:/usr/lib/unifi/logs
+        - unifi-log2:/var/log/unifi
+        - unifi-run:/usr/lib/unifi/run
+        - unifi-run2:/run/unifi
+        - unifi-work:/usr/lib/unifi/work
+    restart: unless-stopped
   unms:
     image: oznu/unms:armhf
     volumes:
