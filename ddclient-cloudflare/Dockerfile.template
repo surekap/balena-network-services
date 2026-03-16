@@ -20,4 +20,4 @@ RUN rc-update del dbus default
 
 ENV INITSYSTEM on
 
-CMD ["bash", "./setup-and-run.sh"]
+CMD ["sh", "./setup-and-run.sh"]

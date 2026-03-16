@@ -1,66 +1,97 @@
 # balena-pihole
 
-If you're looking for a way to quickly and easily get up and running with a Pi-hole device for your home network, this is the project for you.
+This repository started as a fork of the upstream `balena-pihole` project and keeps the original Pi-hole plus Unbound stack intact while adding a few self-hosted network services around it.
 
-This project is a [balenaCloud](https://www.balena.io/cloud) stack with the following services:
+The current stack includes:
 
-* [Pi-hole](https://hub.docker.com/r/pihole/pihole/) (including [PADD](https://github.com/jpmck/PADD))
-* [Unbound](https://nlnetlabs.nl/projects/unbound/about/)
+- [Pi-hole](https://hub.docker.com/r/pihole/pihole/) with [PADD](https://github.com/jpmck/PADD)
+- [Unbound](https://nlnetlabs.nl/projects/unbound/about/)
+- `nginx` for TLS termination
+- `ddclient` for Cloudflare-backed dynamic DNS updates
+- `unifi`
+- `unms`
 
-balenaCloud is a free service to remotely manage and update your Raspberry Pi through an online dashboard interface, as well as providing remote access to the Pi-hole web interface without any additional configuation.
+Fork-specific rationale and merge guidance live in [FORK_NOTES.md](./FORK_NOTES.md).
+
+## Architecture
+
+- Pi-hole forwards DNS requests to Unbound on `127.0.0.1:1053`, matching the upstream design.
+- Pi-hole stays on host networking so DNS remains directly available on the device IP.
+- `nginx` publishes HTTPS for `unifi.<DOMAIN>` and `unms.<DOMAIN>`.
+- `ddclient` updates those public DNS records in Cloudflare when the WAN address changes.
+
+Pi-hole is intentionally not reverse-proxied through `nginx`; access it directly on the device IP, typically `http://<device-ip>/admin/`.
 
 ## Getting Started
 
-To get started you'll first need to sign up for a free balenaCloud account and flash your device.
+Sign up for a free [balenaCloud](https://www.balena.io/cloud) account, provision the device, then deploy this repository with Git or the balena CLI.
 
-<https://www.balena.io/docs/learn/getting-started>
+Reference: <https://www.balena.io/docs/learn/getting-started>
 
-## Deployment
+## Configuration
 
-Once your account is set up, deployment is carried out by downloading the project and pushing it to your device either via Git or the balena CLI.
+### Application Variables
 
-### Application Environment Variables
+| Name | Example | Purpose |
+| --- | --- | --- |
+| `TZ` | `Asia/Kolkata` | Timezone shared across services. |
+| `DOMAIN` | `example.com` | Base domain used for `unifi.<DOMAIN>` and `unms.<DOMAIN>`. |
+| `CLOUDFLARE_LOGIN` | `user@example.com` | Cloudflare account email used by `ddclient` and optional Let's Encrypt DNS validation. |
+| `CLOUDFLARE_APIKEY` | `...` | Cloudflare global API key used by `ddclient` and optional Let's Encrypt DNS validation. |
+| `LETSENCRYPT` | `1` | If set, `nginx` requests Let's Encrypt certificates via the Cloudflare DNS challenge. If unset, self-signed certificates are generated instead. |
 
-Application envionment variables apply to all services within the application, and can be applied fleet-wide to apply to multiple devices.
+### Optional Variables
 
-|Name|Value|Purpose|
-|---|---|---|
-|`TZ`|E.g. `America/Toronto`, find a [list of all timezone values here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).|To inform both `pihole` and `unbound` services of the timezone in your location, in order to set times and dates within the applications correctly.|
+| Name | Default | Purpose |
+| --- | --- | --- |
+| `DDCLIENT_UPDATE_SECONDS` | `600` | How often `ddclient` checks for a public IP change. |
+| `DDCLIENT_EXTRAARGS` | empty | Extra flags passed to `ddclient`. |
+| `NODDNS` | empty | If set, disables the `ddclient` service startup. |
+| `CERT_COUNTRY` | `UK` | Country code used when generating self-signed certificates. |
 
-### Service Variables
+### Pi-hole Variables
 
-Service variables are set to apply only to a specific service within the application, but can also be set to apply to all devices in the fleet.
+| Service | Name | Value | Purpose |
+| --- | --- | --- | --- |
+| `pihole` | `DNS1` | `127.0.0.1#1053` | Primary upstream DNS target, pointing Pi-hole at Unbound. |
+| `pihole` | `DNS2` | `127.0.0.1#1053` | Secondary upstream DNS target. |
+| `pihole` | `DNSMASQ_LISTENING` | `eth0` | Use `wlan0` instead when the device is attached by Wi-Fi. |
+| `pihole` | `INTERFACE` | `eth0` | Interface Pi-hole should bind to. |
+| `pihole` | `IPv6` | `False` | Disables IPv6 inside this stack unless you explicitly want it. |
+| `pihole` | `ServerIP` | `<device LAN IP>` | Required for full Pi-hole blocking behavior. |
+| `pihole` | `WEBPASSWORD` | `mysecretpassword` | Optional password for the Pi-hole admin UI. |
 
-|Service|Name|Value|Purpose|
-|---|---|---|---|
-|`pihole`|`DNS1`|`127.0.0.1#1053`|To tell Pi-hole where to forward DNS requests that aren’t blocked. We’re using the Unbound project here but you can specify your own.|
-|`pihole`|`DNS2`|`127.0.0.1#1053`|Secondary DNS server - see above.|
-|`pihole`|`DNSMASQ_LISTENING`|`eth0`|We set this to `eth0` to indicate we want DNSMASQ to listen on the ethernet interface of the Raspberry Pi. If you're connecting to your network with WiFi replace this with `wlan0`|
-|`pihole`|`INTERFACE`|`eth0`|As above|
-|`pihole`|`IPv6`|`False`|We’re not using IPv6 internally here.|
-|`pihole`|`ServerIP`|_[external device ip]_|Set this to the local IP address of your Pi-hole device to enable full ad-blocking. [Blocking modes are explained here](https://docs.pi-hole.net/ftldns/blockingmode/). `0.0.0.0` provides unspecified IP blocking.
-|`pihole`|`WEBPASSWORD`|`mysecretpassword`|__Optional__ password for accessing the web-based interface of Pi-hole - you won’t be able to access the admin panel without defining a password here.
+## Access Patterns
+
+- Pi-hole admin: `http://<device-ip>/admin/`
+- Unifi: `https://unifi.<DOMAIN>/`
+- UNMS: `https://unms.<DOMAIN>/`
+
+Direct container ports are still exposed for `unifi` and `unms`, but the intended public path is through `nginx`.
+
+## Compatibility Notes
+
+- Upstream sync is currently clean: local `master` already contains `origin/master`.
+- The fork-specific changes are concentrated in `docker-compose.yml`, `nginx/`, and `ddclient-cloudflare/`, which keeps future upstream merges manageable.
+- `unifi` and `unms` rely on older ARM-compatible images and should be validated before any broader base-image or device-architecture change.
 
 ## Usage
 
-<https://docs.pi-hole.net/guides/unbound/>
-
-## Help
-
-If you're having trouble getting the project running, submit an issue or post on the forums at <https://forums.balena.io>.
+- Pi-hole with Unbound: <https://docs.pi-hole.net/guides/unbound/>
+- balena forums: <https://forums.balena.io>
 
 ## Author
 
-Kyle Harding <kylemharding@gmail.com>
+Upstream project: Kyle Harding <kylemharding@gmail.com>
 
 ## Acknowledgments
 
-* <https://github.com/pi-hole/docker-pi-hole/>
-* <https://docs.pi-hole.net/guides/unbound/>
-* <https://github.com/folhabranca/docker-unbound>
-* <https://github.com/MatthewVance/unbound-docker>
-* <https://nlnetlabs.nl/documentation/unbound>
-* <https://firebog.net/>
+- <https://github.com/pi-hole/docker-pi-hole/>
+- <https://docs.pi-hole.net/guides/unbound/>
+- <https://github.com/folhabranca/docker-unbound>
+- <https://github.com/MatthewVance/unbound-docker>
+- <https://nlnetlabs.nl/documentation/unbound>
+- <https://firebog.net/>
 
 ## License
 

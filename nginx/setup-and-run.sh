@@ -8,7 +8,9 @@ SELFCERT_COUNTRY=${CERT_COUNTRY:-UK}
 LETSENCRYPT_PATH=/etc/letsencrypt/live
 CLOUDFLARE_CREDS=/etc/cloudflare/creds.ini
 NGINX_SPEC=/app/nginx-spec.conf
-SERVICES=(unifi:8443 unms:443 pihole:80)
+# Pi-hole remains on host networking for DNS, so only bridge-networked
+# services are reverse-proxied through nginx.
+SERVICES=(unifi:8443 unms:443)
 CERTBOT="certbot"
 
 function log { echo "[$1] $2"; }
@@ -62,7 +64,7 @@ else
 	loginfo "Setting up self-signed certificates."
 	for service in "${SERVICES[@]}"; do
 		SUBDOMAIN=${service%%:*}
-		selfsigned_generate "$i.$DOMAIN"
+		selfsigned_generate "$SUBDOMAIN.$DOMAIN"
 	done
 fi
 
