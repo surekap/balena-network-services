@@ -32,9 +32,9 @@ services:
       - '127.0.0.1'
       - '1.1.1.1'
     restart: unless-stopped
-        network_mode: host
-        ports:
-          - "80:80"
+    network_mode: host
+    ports:
+      - "80:80"
   unbound:
     build: ./unbound
     ports:
